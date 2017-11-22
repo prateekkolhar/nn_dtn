@@ -28,38 +28,38 @@ class Solver(object):
         self.test_model = test_model
         self.config = tf.ConfigProto()
         self.config.gpu_options.allow_growth=True
-	self.label_choices = np.empty([3,1], dtype=int)
+        self.label_choices = np.empty([3,1], dtype=int)
     def load_svhn(self, image_dir, split='train'):
         print ('loading svhn image dataset..')
         
         if self.model.mode == 'pretrain':
             image_file = 'extra_32x32.mat' if split=='train' else 'test_32x32.mat'
         else:
-       	    image_file = 'train_32x32.mat' if split=='train' else 'test_32x32.mat'
+            image_file = 'train_32x32.mat' if split=='train' else 'test_32x32.mat'
             
         image_dir = os.path.join(image_dir, image_file)
         svhn = scipy.io.loadmat(image_dir)
         images = np.transpose(svhn['X'], [3, 0, 1, 2]) / 127.5 - 1
         labels = svhn['y'].reshape(-1)
         labels[np.where(labels==10)] = 0
-	if split == 'train':
-		images = images[:3]
-		labels = labels[:3]
-		self.label_choices = labels
-	else:
-		image_res = []
-		for z in self.label_choices:
-			# print "z = ", z
-			for i in range(len(labels)): 
-				if labels[i] == z:
-					image_res = np.append(image_res,images[i])
-					# print images[i].shape, image_res.shape
-					break
-				# print "image_res = ", image_res
-		images = image_res
-		images = np.reshape(images, (3,32,32,3))
-		labels = self.label_choices
-		
+        if split == 'train':
+            images = images[:3]
+            labels = labels[:3]
+            self.label_choices = labels
+        else:
+            image_res = []
+            for z in self.label_choices:
+            # print "z = ", z
+                for i in range(len(labels)): 
+                    if labels[i] == z:
+                        image_res = np.append(image_res,images[i])
+                        # print images[i].shape, image_res.shape
+                        break
+                # print "image_res = ", image_res
+            images = image_res
+            images = np.reshape(images, (3,32,32,3))
+            labels = self.label_choices
+    
         print ('finished loading svhn image dataset..!')
         return images, labels
 
@@ -101,7 +101,7 @@ class Solver(object):
             summary_writer = tf.summary.FileWriter(logdir=self.log_dir, graph=tf.get_default_graph())
 
             for step in range(self.pretrain_iter+1):
-		print step, train_images.shape[0], self.batch_size
+                print (step, train_images.shape[0], self.batch_size)
                 i = step % int(train_images.shape[0] / self.batch_size)
                 batch_images = train_images[i*self.batch_size:(i+1)*self.batch_size]
                 batch_labels = train_labels[i*self.batch_size:(i+1)*self.batch_size] 
@@ -225,3 +225,4 @@ class Solver(object):
                 path = os.path.join(self.sample_save_path, 'sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
                 scipy.misc.imsave(path, merged)
                 print ('saved %s' %path)
+

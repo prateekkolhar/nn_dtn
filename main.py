@@ -9,7 +9,6 @@ flags.DEFINE_string('sample_save_path', 'sample', "directory for saving the samp
 FLAGS = flags.FLAGS
 
 def main(_):
-    
     model = DTN(mode=FLAGS.mode, learning_rate=0.0003)
     solver = Solver(model, batch_size=3, pretrain_iter=20000, train_iter=2000, sample_iter=1, 
                     svhn_dir='svhn', mnist_dir='mnist', model_save_path=FLAGS.model_save_path, sample_save_path=FLAGS.sample_save_path)
