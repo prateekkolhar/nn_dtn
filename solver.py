@@ -12,7 +12,7 @@ class Solver(object):
 
     def __init__(self, model, batch_size=100, pretrain_iter=20000, train_iter=2000, sample_iter=100, 
                  svhn_dir='svhn', mnist_dir='mnist', log_dir='logs', sample_save_path='sample', 
-                 model_save_path='model', pretrained_model='model/svhn_model-20000-hyp', test_model='model/dtn-1800'):
+                 model_save_path='model', pretrained_model='model/svhn_model-20000', test_model='model/dtn-1800'):
         
         self.model = model
         self.batch_size = batch_size
@@ -69,10 +69,18 @@ class Solver(object):
         image_dir = os.path.join(image_dir, image_file)
         with open(image_dir, 'rb') as f:
             mnist = pickle.load(f)
-        images = mnist['X'] / 127.5 - 1
-        labels = mnist['y']
+        image_res = mnist['X'] / 127.5 - 1
+        labels_res = mnist['y']
+        images = []
+        for z in self.label_choices:
+            for i in range(len(labels_res)):
+                if labels_res[i] == z:
+                  images = np.append(images, image_res[i])
+                  break
+        labels = self.label_choices
+        images = np.reshape(images, (3,32,32,1))
         print ('finished loading mnist image dataset..!')
-        return images, labels
+        return images, labels	
 
     def merge_images(self, sources, targets, k=10):
         _, h, w, _ = sources.shape
