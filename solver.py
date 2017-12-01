@@ -38,7 +38,7 @@ class Solver(object):
             
         image_dir = os.path.join(image_dir, image_file)
         svhn = scipy.io.loadmat(image_dir)
-        images = np.transpose(svhn['X'], [3, 0, 1, 2]) / 127.5 - 1
+        images = np.transpose(svhn['X'], [3, 0, 1, 2]) / 255.0
         labels = svhn['y'].reshape(-1)
         labels[np.where(labels==10)] = 0
         print ('finished loading svhn image dataset..!')
