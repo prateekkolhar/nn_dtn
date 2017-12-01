@@ -60,7 +60,7 @@ class DTN(object):
                     # net = slim.conv2d(net, 128, [4, 4], padding='VALID', scope='conv4')   # (batch_size, 1, 1, 128)
                     # net = slim.batch_norm(net, activation_fn=tf.nn.tanh, scope='bn4')
 
-                    if self.mode == 'pretrain':
+                    if self.mode == 'pretrain' or self.mode=='pretrain_eval_t' or self.mode=='pretrain_eval_s':
                         ### Decoder
                         upsample1 = tf.image.resize_images(net, size=(8,8), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
                         # print "---" + str(upsample1.shape)
@@ -266,7 +266,17 @@ class DTN(object):
             loss_summary = tf.summary.scalar('classification_loss', self.loss)
             accuracy_summary = tf.summary.scalar('accuracy', self.accuracy)
             self.summary_op = tf.summary.merge([loss_summary, accuracy_summary])
-
+        
+        elif self.mode == 'pretrain_eval_s':
+            self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.fx = self.content_extractor(self.images)
+            self.sampled_images = self.fx
+        
+        elif self.mode == 'pretrain_eval_t':
+            self.images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.fx = self.content_extractor(self.images)
+            self.sampled_images = self.fx
+            
         elif self.mode == 'eval':
             self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
 

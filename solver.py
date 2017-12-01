@@ -246,3 +246,59 @@ class Solver(object):
                 path = os.path.join(self.sample_save_path, 'sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
                 scipy.misc.imsave(path, merged)
                 print ('saved %s' %path)
+
+    def pretrain_eval_s(self):
+        # build model
+        model = self.model
+        model.build_model()
+
+        # load svhn dataset
+        svhn_images, _ = self.load_svhn(self.svhn_dir)
+      
+
+        with tf.Session(config=self.config) as sess:
+            # load trained parameters
+            print ('loading test model..')
+            saver = tf.train.Saver()
+            saver.restore(sess, self.pretrained_model)
+
+            print ('start sampling..!')
+            for i in range(self.sample_iter):
+                # train model for source domain S
+                batch_images = svhn_images[i*self.batch_size:(i+1)*self.batch_size]
+                feed_dict = {model.images: batch_images}
+                sampled_batch_images = sess.run(model.sampled_images, feed_dict)
+
+                # merge and save source images and sampled target images
+                merged = self.merge_images(batch_images, sampled_batch_images)
+                path = os.path.join(self.pretrain_sample_save_path, 's_sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
+                scipy.misc.imsave(path, merged)
+                print ('saved %s' %path)
+                
+    def pretrain_eval_t(self):
+        # build model
+        model = self.model
+        model.build_model()
+
+        # load mnist dataset
+        mnist_images, _ = self.load_mnist(self.mnist_dir)
+        
+
+        with tf.Session(config=self.config) as sess:
+            # load trained parameters
+            print ('loading test model..')
+            saver = tf.train.Saver()
+            saver.restore(sess, self.pretrained_model)
+
+            print ('start sampling..!')
+            for i in range(self.sample_iter):
+                # train model for source domain S
+                batch_images = mnist_images[i*self.batch_size:(i+1)*self.batch_size]
+                feed_dict = {model.images: batch_images}
+                sampled_batch_images = sess.run(model.sampled_images, feed_dict)
+
+                # merge and save source images and sampled target images
+                merged = self.merge_images(batch_images, sampled_batch_images)
+                path = os.path.join(self.pretrain_sample_save_path, 't_sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
+                scipy.misc.imsave(path, merged)
+                print ('saved %s' %path)
