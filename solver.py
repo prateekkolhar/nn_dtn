@@ -11,7 +11,7 @@ class Solver(object):
 
     def __init__(self, model, batch_size=100, pretrain_iter=20000, train_iter=2000, sample_iter=100, 
                  svhn_dir='svhn', mnist_dir='mnist', log_dir='logs', sample_save_path='sample', 
-                 model_save_path='model', pretrained_model='model/svhn_model-1000', test_model='model/dtn-1800'):
+                 model_save_path='model', pretrained_model='model/svhn_model-20000', test_model='model/dtn-1800'):
         
         self.model = model
         self.batch_size = batch_size
@@ -50,7 +50,7 @@ class Solver(object):
         image_dir = os.path.join(image_dir, image_file)
         with open(image_dir, 'rb') as f:
             mnist = pickle.load(f)
-        images = mnist['X'] / 127.5 - 1
+        images = mnist['X'] / 255.0
         labels = mnist['y']
         print ('finished loading mnist image dataset..!')
         return images, labels
