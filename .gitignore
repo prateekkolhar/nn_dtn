@@ -101,11 +101,12 @@ ENV/
 .mypy_cache/
 
 
-./condor_cpu/
-./condor_gpu/
-./logs/
-./main.ipynb
-./mnist/
-./model/
-./sample/
-./svhn/
+condor_cpu/
+condor_gpu/
+logs/
+main.ipynb
+mnist/
+model/
+sample/
+svhn/
+
