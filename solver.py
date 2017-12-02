@@ -39,7 +39,7 @@ class Solver(object):
             
         image_dir = os.path.join(image_dir, image_file)
         svhn = scipy.io.loadmat(image_dir)
-        images = np.transpose(svhn['X'], [3, 0, 1, 2]) / 255.0
+        images = np.transpose(svhn['X'], [3, 0, 1, 2]) / 127.5 - 1
         labels = svhn['y'].reshape(-1)
         labels[np.where(labels==10)] = 0
         print ('finished loading svhn image dataset..!')
@@ -51,7 +51,7 @@ class Solver(object):
         image_dir = os.path.join(image_dir, image_file)
         with open(image_dir, 'rb') as f:
             mnist = pickle.load(f)
-        images = mnist['X'] / 255.0
+        images = mnist['X'] / 127.5 - 1
         labels = mnist['y']
         print ('finished loading mnist image dataset..!')
         return images, labels
@@ -303,3 +303,38 @@ class Solver(object):
                 path = os.path.join(self.pretrain_sample_save_path, 't_sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
                 scipy.misc.imsave(path, merged)
                 print ('saved %s' %path)
+
+    def pretrain_old(self):
+        # load svhn dataset
+        train_images, train_labels = self.load_svhn(self.svhn_dir, split='train')
+        test_images, test_labels = self.load_svhn(self.svhn_dir, split='test')
+
+        # build a graph
+        model = self.model
+        model.build_model()
+        
+        with tf.Session(config=self.config) as sess:
+            tf.global_variables_initializer().run()
+            saver = tf.train.Saver()
+            summary_writer = tf.summary.FileWriter(logdir=self.log_dir, graph=tf.get_default_graph())
+
+            for step in range(self.pretrain_iter+1):
+                i = step % int(train_images.shape[0] / self.batch_size)
+                batch_images = train_images[i*self.batch_size:(i+1)*self.batch_size]
+                batch_labels = train_labels[i*self.batch_size:(i+1)*self.batch_size] 
+                feed_dict = {model.images: batch_images, model.labels: batch_labels}
+                sess.run(model.train_op, feed_dict) 
+
+                if (step+1) % 10 == 0:
+                    summary, l, acc = sess.run([model.summary_op, model.loss, model.accuracy], feed_dict)
+                    rand_idxs = np.random.permutation(test_images.shape[0])[:self.batch_size]
+                    test_acc, _ = sess.run(fetches=[model.accuracy, model.loss], 
+                                           feed_dict={model.images: test_images[rand_idxs], 
+                                                      model.labels: test_labels[rand_idxs]})
+                    summary_writer.add_summary(summary, step)
+                    print ('Step: [%d/%d] loss: [%.6f] train acc: [%.2f] test acc [%.2f]' \
+                               %(step+1, self.pretrain_iter, l, acc, test_acc))
+
+                if (step+1) % 1000 == 0:  
+                    saver.save(sess, os.path.join(self.model_save_path, 'svhn_model'), global_step=step+1) 
+                    print ('svhn_model-%d saved..!' %(step+1))
