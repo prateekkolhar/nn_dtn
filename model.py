@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
+import numpy as np
 
 
 class DTN(object):
@@ -276,6 +277,12 @@ class DTN(object):
             self.images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
             self.fx = self.content_extractor(self.images)
             self.sampled_images = self.fx
+
+        elif self.mode == 'pretrain_eval_separation':
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.fs = self.content_extractor(self.src_images)
+            self.ft = self.content_extractor(self.trg_images, reuse=True)
             
         elif self.mode == 'eval':
             self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')

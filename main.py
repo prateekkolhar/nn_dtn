@@ -21,7 +21,6 @@ def main(_):
         tf.gfile.MakeDirs(FLAGS.model_save_path)
     if not tf.gfile.Exists(FLAGS.sample_save_path):
         tf.gfile.MakeDirs(FLAGS.sample_save_path)
-    
     if FLAGS.mode == 'pretrain':
         solver.pretrain()
     elif FLAGS.mode == 'pretrain_eval_s':
@@ -30,6 +29,8 @@ def main(_):
         solver.pretrain_eval_t()
     elif FLAGS.mode == 'train':
         solver.train()
+    elif FLAGS.mode == "pretrain_eval_separation":
+        solver.pretrain_eval_separation()
     else:
         solver.eval()
         
