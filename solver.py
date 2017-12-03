@@ -348,3 +348,36 @@ class Solver(object):
                     var_t = np.var(ft, 0)
                     print "loss for " + str(i) + " vs " + str(j) + " is " + str(loss)
                     print "var_s: " + str(var_s) + " and var_t: " + str(var_t)
+
+    def pretrain_eval_separation_after_test(self):
+        # load svhn dataset
+        svhn_images, svhn_labels = self.load_svhn(self.svhn_dir)
+        mnist_images, mnist_labels = self.load_mnist(self.mnist_dir)
+
+        # build a graph
+        model = self.model
+        model.build_model()
+
+        global_loss_vec = []
+        with tf.Session(config=self.config) as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.test_model)
+
+            for i in xrange(10):
+                # m_image = self.get_random_image(mnist_images, mnist_labels, i)
+                # m_images = [m_image]
+                m_images = self.get_all_images(mnist_images, mnist_labels, i)
+                for j in xrange(10):
+                    # s_image = self.get_random_image(svhn_images, svhn_labels, j)
+                    # s_images = [s_image]
+                    s_images = self.get_all_images(svhn_images, svhn_labels, j)
+                    fs, ft = sess.run(fetches=[model.fs, model.ft],
+                                    feed_dict={model.src_images: s_images,
+                                               model.trg_images: m_images})
+                    mean_fs = np.mean(fs, 0)
+                    mean_ft = np.mean(ft, 0)
+                    loss = np.mean(np.square(mean_fs - mean_ft))
+                    var_s = np.var(fs, 0)
+                    var_t = np.var(ft, 0)
+                    print "loss for " + str(i) + " vs " + str(j) + " is " + str(loss)
+                    print "var_s: " + str(var_s) + " and var_t: " + str(var_t)

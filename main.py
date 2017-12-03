@@ -31,6 +31,8 @@ def main(_):
         solver.train()
     elif FLAGS.mode == "pretrain_eval_separation":
         solver.pretrain_eval_separation()
+    elif FLAGS.mode == "pretrain_eval_separation_after_test":
+        solver.pretrain_eval_separation_after_test()
     else:
         solver.eval()
         

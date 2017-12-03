@@ -283,6 +283,12 @@ class DTN(object):
             self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
             self.fs = self.content_extractor(self.src_images)
             self.ft = self.content_extractor(self.trg_images, reuse=True)
+
+        elif self.mode == 'pretrain_eval_separation_after_test':
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.fs = self.content_extractor(self.src_images)
+            self.ft = self.content_extractor(self.trg_images, reuse=True)
             
         elif self.mode == 'eval':
             self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
