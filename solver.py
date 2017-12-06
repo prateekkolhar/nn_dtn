@@ -6,6 +6,7 @@ import os
 import scipy.io
 import scipy.misc
 import sys
+from PIL import Image
 
 
 class Solver(object):
@@ -88,6 +89,7 @@ class Solver(object):
         merged = np.zeros([row*h, row*w*2, 3])
 
         for idx, (s, t) in enumerate(zip(sources, targets)):
+            
             i = idx // row
             j = idx % row
             merged[i*h:(i+1)*h, (j*2)*h:(j*2+1)*h, :] = s
@@ -213,7 +215,7 @@ class Solver(object):
         model.build_model()
 
         # load svhn dataset
-        svhn_images, _ = self.load_svhn(self.svhn_dir)
+        svhn_images, _ = self.load_svhn(self.svhn_dir, split = 'train')
 
         with tf.Session(config=self.config) as sess:
             # load trained parameters
@@ -227,10 +229,21 @@ class Solver(object):
                 batch_images = svhn_images[i*self.batch_size:(i+1)*self.batch_size]
                 feed_dict = {model.images: batch_images}
                 sampled_batch_images = sess.run(model.sampled_images, feed_dict)
-
+                # sampled_batch_images = tf.image.grayscale_to_rgb(sampled_batch_images)
+                # print type(sampled_batch_images), type(batch_images)
+                # sampled_batch_images = tf.image.grayscale_to_rgb(sampled_batch_images)
+                # print sampled_batch_images.shape, batch_images.shape
+                # scipy.misc.imsave('lol-%d.png' %(i), batch_images)
+                for s in sampled_batch_images:
+                  # print s.shape
+                  print s
+                  # img = Image.fromarray(s, 'RGB')
+                  # img.save('lol' + str(i) + '.png')
+                  scipy.misc.imsave('lol--%d.png' %(i), s)
+                  i += 1
                 # merge and save source images and sampled target images
-                merged = self.merge_images(batch_images, sampled_batch_images)
-                path = os.path.join(self.sample_save_path, 'sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
-                scipy.misc.imsave(path, merged)
-                print ('saved %s' %path)
+                # merged = self.merge_images(batch_images, sampled_batch_images)
+                # path = os.path.join(self.sample_save_path, 'sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
+                # scipy.misc.imsave(path, merged)
+            print ('END')
 
