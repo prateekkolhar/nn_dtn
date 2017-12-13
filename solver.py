@@ -121,14 +121,17 @@ class Solver(object):
             for step in range(self.pretrain_iter+1):
                 i = step % int(train_images.shape[0] / self.batch_size)
                 batch_images = train_images[i*self.batch_size:(i+1)*self.batch_size]
-                feed_dict = {model.images: batch_images}
-                sess.run(model.train_op, feed_dict)
+                batch_labels = train_labels[i * self.batch_size:(i + 1) * self.batch_size]
+                feed_dict = {model.images: batch_images, model.labels: batch_labels}
+                sess.run(model.train_op1, feed_dict)
+                sess.run(model.train_op2, feed_dict)
 
                 if (step+1) % 10 == 0:
-                    summary, l, acc = sess.run([model.summary_op, model.loss, model.accuracy], feed_dict)
+                    summary, l, acc = sess.run([model.summary_op, model.loss2, model.accuracy], feed_dict)
                     rand_idxs = np.random.permutation(test_images.shape[0])[:self.batch_size]
-                    test_acc, _ = sess.run(fetches=[model.accuracy, model.loss],
-                                           feed_dict={model.images: test_images[rand_idxs]})
+                    test_acc, _ = sess.run(fetches=[model.accuracy, model.loss2],
+                                           feed_dict={model.images: test_images[rand_idxs],
+                                                      model.labels: test_labels[rand_idxs]})
                     summary_writer.add_summary(summary, step)
                     print ('Step: [%d/%d] loss: [%.6f] train acc: [%.2f] test acc [%.2f]' \
                                %(step+1, self.pretrain_iter, l, acc, test_acc))
@@ -381,3 +384,54 @@ class Solver(object):
                     var_t = np.var(ft, 0)
                     print "loss for " + str(i) + " vs " + str(j) + " is " + str(loss)
                     print "var_s: " + str(var_s) + " and var_t: " + str(var_t)
+
+    def pretrain_intra_variance(self):
+        # load svhn dataset
+        svhn_images, svhn_labels = self.load_svhn(self.svhn_dir)
+        mnist_images, mnist_labels = self.load_mnist(self.mnist_dir)
+
+        # build a graph
+        model = self.model
+        model.build_model()
+
+        global_loss_vec = []
+        with tf.Session(config=self.config) as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.pretrained_model)
+
+            for i in xrange(10):
+                # m_image = self.get_random_image(mnist_images, mnist_labels, i)
+                # m_images = [m_image]
+                m_images = self.get_all_images(mnist_images, mnist_labels, i)
+                s_images = self.get_all_images(svhn_images, svhn_labels, i)
+                fs, ft = sess.run(fetches=[model.fs, model.ft],
+                                  feed_dict={model.trg_images: m_images, model.src_images: s_images})
+
+                var_fs = np.var(fs, 0)
+                var_ft = np.var(ft, 0)
+                print str(np.mean(var_fs)) + "\t" + str(np.mean(var_ft))
+
+    def pretrain_intra_variance_after_test(self):
+        # load svhn dataset
+        svhn_images, svhn_labels = self.load_svhn(self.svhn_dir)
+        mnist_images, mnist_labels = self.load_mnist(self.mnist_dir)
+
+        # build a graph
+        model = self.model
+        model.build_model()
+
+        with tf.Session(config=self.config) as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.test_model)
+
+            for i in xrange(10):
+                # m_image = self.get_random_image(mnist_images, mnist_labels, i)
+                # m_images = [m_image]
+                m_images = self.get_all_images(mnist_images, mnist_labels, i)
+                s_images = self.get_all_images(svhn_images, svhn_labels, i)
+                fs, ft = sess.run(fetches=[model.fs, model.ft],
+                                  feed_dict={model.trg_images: m_images, model.src_images: s_images})
+
+                var_fs = np.var(fs, 0)
+                var_ft = np.var(ft, 0)
+                print str(np.mean(var_fs)) + "\t" + str(np.mean(var_ft))

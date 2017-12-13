@@ -33,6 +33,10 @@ def main(_):
         solver.pretrain_eval_separation()
     elif FLAGS.mode == "pretrain_eval_separation_after_test":
         solver.pretrain_eval_separation_after_test()
+    elif FLAGS.mode == "pretrain_intra_variance":
+        solver.pretrain_intra_variance()
+    elif FLAGS.mode == "pretrain_intra_variance_after_test":
+        solver.pretrain_intra_variance_after_test()
     else:
         solver.eval()
         

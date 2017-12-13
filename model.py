@@ -13,30 +13,70 @@ class DTN(object):
         
     def content_extractor_old(self, images, reuse=False):
         # images: (batch, 32, 32, 3) or (batch, 32, 32, 1)
-        
-        if images.get_shape()[3] == 1:
-            # For mnist dataset, replicate the gray scale image 3 times.
-            images = tf.image.grayscale_to_rgb(images)
-        
+
+        # if images.get_shape()[3] == 1:
+        #     # For mnist dataset, replicate the gray scale image 3 times.
+        #     images = tf.image.grayscale_to_rgb(images)
+
         with tf.variable_scope('content_extractor', reuse=reuse):
             with slim.arg_scope([slim.conv2d], padding='SAME', activation_fn=None,
                                  stride=2,  weights_initializer=tf.contrib.layers.xavier_initializer()):
-                with slim.arg_scope([slim.batch_norm], decay=0.95, center=True, scale=True, 
+                with slim.arg_scope([slim.batch_norm], decay=0.95, center=True, scale=True,
                                     activation_fn=tf.nn.relu, is_training=(self.mode=='train' or self.mode=='pretrain')):
-                    
+
+                    print "***" + str(images.shape)
                     net = slim.conv2d(images, 64, [3, 3], scope='conv1')   # (batch_size, 16, 16, 64)
+                    print "***" + str(net.shape)
                     net = slim.batch_norm(net, scope='bn1')
+                    print "***" + str(net.shape)
                     net = slim.conv2d(net, 128, [3, 3], scope='conv2')     # (batch_size, 8, 8, 128)
+                    print "***" + str(net.shape)
                     net = slim.batch_norm(net, scope='bn2')
                     net = slim.conv2d(net, 256, [3, 3], scope='conv3')     # (batch_size, 4, 4, 256)
+                    print "***" + str(net.shape)
                     net = slim.batch_norm(net, scope='bn3')
+                    print "***" + str(net.shape)
                     net = slim.conv2d(net, 128, [4, 4], padding='VALID', scope='conv4')   # (batch_size, 1, 1, 128)
+                    print "***" + str(net.shape)
                     net = slim.batch_norm(net, activation_fn=tf.nn.tanh, scope='bn4')
+                    print "***" + str(net.shape)
                     if self.mode == 'pretrain':
                         net = slim.conv2d(net, 10, [1, 1], padding='VALID', scope='out')
                         net = slim.flatten(net)
                     return net
 
+    def content_extractor_classifier(self, images, reuse=False):
+        # images: (batch, 32, 32, 3) or (batch, 32, 32, 1)
+
+        # if images.get_shape()[3] == 1:
+        #     # For mnist dataset, replicate the gray scale image 3 times.
+        #     images = tf.image.grayscale_to_rgb(images)
+
+        with tf.variable_scope('content_extractor', reuse=reuse):
+            with slim.arg_scope([slim.conv2d], padding='SAME', activation_fn=None,
+                                stride=2, weights_initializer=tf.contrib.layers.xavier_initializer()):
+                with slim.arg_scope([slim.batch_norm], decay=0.95, center=True, scale=True,
+                                    activation_fn=tf.nn.relu,
+                                    is_training=(self.mode == 'train' or self.mode == 'pretrain')):
+                    # print "***" + str(images.shape)
+                    # #4,4,8
+                    # net = slim.conv2d(images, 32, [2, 2], scope='conv1')  # (batch_size, 16, 16, 64)
+                    # print "***" + str(net.shape)
+                    # # 2, 2, 64
+                    # net = slim.batch_norm(net, scope='bn1')
+                    # net = slim.conv2d(net, 64, [2, 2], scope='conv2')  # (batch_size, 8, 8, 128)
+                    # print "***" + str(net.shape)
+                    # net = slim.batch_norm(net, scope='bn2')
+                    # net = slim.conv2d(net, 128, [3, 3], scope='conv3')  # (batch_size, 4, 4, 256)
+                    # print "***" + str(net.shape)
+                    # net = slim.batch_norm(net, scope='bn3')
+                    # net = slim.conv2d(net, 128, [4, 4], padding='VALID', scope='conv4')  # (batch_size, 1, 1, 128)
+                    # print "***" + str(net.shape)
+                    # net = slim.batch_norm(net, activation_fn=tf.nn.tanh, scope='bn4')
+                    if self.mode == 'pretrain':
+                        net = slim.conv2d(images, 10, [1, 1], padding='VALID', scope='out')
+                        net = slim.flatten(net)
+                    return net
 
     def content_extractor(self, images, reuse=False):
         # images: (batch, 32, 32, 3) or (batch, 32, 32, 1)
@@ -85,10 +125,12 @@ class DTN(object):
                         logits = tf.layers.conv2d(inputs=conv6, filters=3, kernel_size=(3,3), padding='same', activation=None)
                         # print "---" + str(logits.shape)
                         # Now 32x32x3
-                        net = logits
+                        net1 = logits
+                        net2 = self.content_extractor_classifier(net)
+                        return net1, net2
                     else:
                         net = tf.reshape(net, [-1,1,1,128])
-                return net
+                        return net, net
 
     def content_extractor_1(self, images, reuse=False):
         # images: (batch, 32, 32, 3) or (batch, 32, 32, 1)
@@ -253,18 +295,23 @@ class DTN(object):
             self.labels = tf.placeholder(tf.int64, [None], 'svhn_labels')
             
             # logits and accuracy
-            self.logits = self.content_extractor(self.images)
-            self.loss = tf.reduce_mean(tf.square(self.images - self.logits))
-            # pred=tf.reshape(self.logits,[-1,32*32*3])
-            # y=tf.reshape(self.images,[-1,32*32*3])
-            # self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=y, logits=pred))
+            self.logits1, self.logits2 = self.content_extractor(self.images)
+            self.loss1 = tf.reduce_mean(tf.square(self.images - self.logits1))
 
-            self.accuracy = self.loss
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate) 
-            self.train_op = slim.learning.create_train_op(self.loss, self.optimizer)
+            self.pred = tf.argmax(self.logits2, 1)
+            self.correct_pred = tf.equal(self.pred, self.labels)
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, tf.float32))
+
+            # loss and train op
+            self.loss2 = slim.losses.sparse_softmax_cross_entropy(self.logits2, self.labels)
+
+            self.optimizer1 = tf.train.AdamOptimizer(self.learning_rate)
+            self.optimizer2 = tf.train.AdamOptimizer(self.learning_rate)
+            self.train_op1 = slim.learning.create_train_op(self.loss1, self.optimizer1)
+            self.train_op2 = slim.learning.create_train_op(self.loss2, self.optimizer2)
             
             # summary op
-            loss_summary = tf.summary.scalar('classification_loss', self.loss)
+            loss_summary = tf.summary.scalar('classification_loss', self.loss2)
             accuracy_summary = tf.summary.scalar('accuracy', self.accuracy)
             self.summary_op = tf.summary.merge([loss_summary, accuracy_summary])
         
@@ -289,12 +336,24 @@ class DTN(object):
             self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
             self.fs = self.content_extractor(self.src_images)
             self.ft = self.content_extractor(self.trg_images, reuse=True)
+
+        elif self.mode == 'pretrain_intra_variance':
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.fs = self.content_extractor(self.src_images)
+            self.ft = self.content_extractor(self.trg_images, reuse=True)
+
+        elif self.mode == 'pretrain_intra_variance_after_test':
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.fs = self.content_extractor(self.src_images)
+            self.ft = self.content_extractor(self.trg_images, reuse=True)
             
         elif self.mode == 'eval':
             self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
 
             # source domain (svhn to mnist)
-            self.fx = self.content_extractor(self.images)
+            self.fx, _ = self.content_extractor(self.images)
             self.sampled_images = self.generator(self.fx)
 
         elif self.mode == 'train':
@@ -302,10 +361,10 @@ class DTN(object):
             self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
             
             # source domain (svhn to mnist)
-            self.fx = self.content_extractor(self.src_images)
+            self.fx, _ = self.content_extractor(self.src_images)
             self.fake_images = self.generator(self.fx)
             self.logits = self.discriminator(self.fake_images)
-            self.fgfx = self.content_extractor(self.fake_images, reuse=True)
+            self.fgfx, _ = self.content_extractor(self.fake_images, reuse=True)
 
             # loss
             self.d_loss_src = slim.losses.sigmoid_cross_entropy(self.logits, tf.zeros_like(self.logits))
@@ -339,7 +398,7 @@ class DTN(object):
                                                     sampled_images_summary])
             
             # target domain (mnist)
-            self.fx = self.content_extractor(self.trg_images, reuse=True)
+            self.fx, _ = self.content_extractor(self.trg_images, reuse=True)
             self.reconst_images = self.generator(self.fx, reuse=True)
             self.logits_fake = self.discriminator(self.reconst_images, reuse=True)
             self.logits_real = self.discriminator(self.trg_images, reuse=True)
