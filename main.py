@@ -3,7 +3,7 @@ from model import DTN
 from solver import Solver
 
 flags = tf.app.flags
-flags.DEFINE_string('mode', 'train', "'pretrain', 'pretrain_eval_s', 'pretrain_eval_t', 'train' or 'eval'")
+flags.DEFINE_string('mode', 'train', "'pretrain', 'pretrain_eval_s', 'pretrain_eval_t', 'train', 'eval_d' or 'eval'")
 flags.DEFINE_string('model_save_path', 'model', "directory for saving the model")
 flags.DEFINE_string('sample_save_path', 'sample', "directory for saving the sampled images")
 flags.DEFINE_string('pretrain_sample_save_path', 'pretrain_sample', "directory for saving the sampled images")
@@ -28,8 +28,14 @@ def main(_):
         solver.pretrain_eval_s()
     elif FLAGS.mode == 'pretrain_eval_t':
         solver.pretrain_eval_t()
+    elif FLAGS.mode == 'train_decode_eval_s':
+        solver.train_decode_eval_s()
+    elif FLAGS.mode == 'train_decode_eval_t':
+        solver.train_decode_eval_t()
     elif FLAGS.mode == 'train':
         solver.train()
+    elif FLAGS.mode == 'eval_d':
+        solver.eval_d()
     else:
         solver.eval()
         

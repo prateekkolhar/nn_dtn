@@ -248,6 +248,52 @@ class Solver(object):
                 scipy.misc.imsave(path, merged)
                 print ('saved %s' %path)
 
+    def eval_d(self):
+        # build model
+        model = self.model
+        model.build_model()
+
+        # load svhn dataset
+        svhn_images, svhn_labels = self.load_svhn(self.svhn_dir)
+        mnist_images, mnist_labels = self.load_mnist(self.mnist_dir)
+        
+
+        with tf.Session(config=self.config) as sess:
+            # load trained parameters
+            print ('loading test model..')
+            saver = tf.train.Saver()
+            saver.restore(sess, self.test_model)
+
+#             s_count=np.zeros(3)
+#             real_t_count=np.zeros(3)
+#             fake_t_count=np.zeros(3)
+            print ('start sampling..!')
+            f_s = open("source.txt","w") 
+            f_real_t = open("real_target.txt","w") 
+            f_fake_t = open("fake_target.txt","w") 
+            
+            for i in range(self.sample_iter):
+                # train model for source domain S
+                
+                src_images = svhn_images[i*self.batch_size:(i+1)*self.batch_size]
+                src_labels = svhn_labels[i*self.batch_size:(i+1)*self.batch_size]
+                trg_images = mnist_images[i*self.batch_size:(i+1)*self.batch_size]
+                trg_labels = mnist_labels[i*self.batch_size:(i+1)*self.batch_size]
+                
+                
+                feed_dict = {model.src_images: src_images, model.trg_images: trg_images}
+                logits_s,logits_fake_t,logits_real_t = sess.run([model.logits_s,model.logits_fake_t,model.logits_real_t], feed_dict)
+                
+                for j in xrange(self.batch_size):
+                    f_s.write(str(src_labels[j])+" "+str(logits_s[j])+"\n")
+                    f_real_t.write(str(trg_labels[j])+" "+str(logits_real_t[j])+"\n")
+                    f_fake_t.write(str(trg_labels[j])+" "+str(logits_fake_t[j])+"\n")
+            f_s.close();
+            f_real_t.close();
+            f_fake_t.close();
+            
+                
+        
     def pretrain_eval_s(self):
         # build model
         model = self.model
@@ -255,7 +301,7 @@ class Solver(object):
 
         # load svhn dataset
         svhn_images, _ = self.load_svhn(self.svhn_dir)
-      
+        
 
         with tf.Session(config=self.config) as sess:
             # load trained parameters
@@ -303,3 +349,84 @@ class Solver(object):
                 path = os.path.join(self.pretrain_sample_save_path, 't_sample-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
                 scipy.misc.imsave(path, merged)
                 print ('saved %s' %path)
+                
+    def train_decode_eval_s(self):
+        model = self.model
+        model.mode = 'pretrain_eval_s'
+        model.build_model()
+
+        # load svhn dataset
+        svhn_images, _ = self.load_svhn(self.svhn_dir)
+        
+
+        with tf.Session(config=self.config) as sess:
+            # load trained parameters
+            print ('loading test model..')
+            
+            #get the variable names
+            a=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='content_extractor')
+            b=slim.get_model_variables(scope='content_extractor')
+            c=list(set(a)-set(b))
+            d=filter(lambda x: 'Adam' not in x.name, c)
+            
+            saver_encoder = tf.train.Saver(b)
+            saver_encoder.restore(sess, self.test_model)
+            
+            saver_dencoder = tf.train.Saver(d)
+            saver_dencoder.restore(sess, self.pretrained_model)
+
+
+            print ('start sampling..!')
+            for i in range(self.sample_iter):
+                # train model for source domain S
+                batch_images = svhn_images[i*self.batch_size:(i+1)*self.batch_size]
+                feed_dict = {model.images: batch_images}
+                sampled_batch_images = sess.run(model.sampled_images, feed_dict)
+
+                # merge and save source images and sampled target images
+                merged = self.merge_images(batch_images, sampled_batch_images)
+                path = os.path.join(self.pretrain_sample_save_path, 's_train_decode-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
+                scipy.misc.imsave(path, merged)
+                print ('saved %s' %path)
+             
+    def train_decode_eval_t(self):
+        model = self.model
+        model.mode = 'pretrain_eval_t'
+        model.build_model()
+
+        # load mnist dataset
+        mnist_images, _ = self.load_mnist(self.mnist_dir)
+        
+        
+
+        with tf.Session(config=self.config) as sess:
+            # load trained parameters
+            print ('loading test model..')
+            
+            #get the variable names
+            a=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='content_extractor')
+            b=slim.get_model_variables(scope='content_extractor')
+            c=list(set(a)-set(b))
+            d=filter(lambda x: 'Adam' not in x.name, c)
+            
+            saver_encoder = tf.train.Saver(b)
+            saver_encoder.restore(sess, self.test_model)
+            
+            saver_dencoder = tf.train.Saver(d)
+            saver_dencoder.restore(sess, self.pretrained_model)
+
+
+            print ('start sampling..!')
+            for i in range(self.sample_iter):
+                # train model for source domain S
+                batch_images = mnist_images[i*self.batch_size:(i+1)*self.batch_size]
+                feed_dict = {model.images: batch_images}
+                sampled_batch_images = sess.run(model.sampled_images, feed_dict)
+
+                # merge and save source images and sampled target images
+                merged = self.merge_images(batch_images, sampled_batch_images)
+                path = os.path.join(self.pretrain_sample_save_path, 't_train_decode-%d-to-%d.png' %(i*self.batch_size, (i+1)*self.batch_size))
+                scipy.misc.imsave(path, merged)
+                print ('saved %s' %path)
+                
+    

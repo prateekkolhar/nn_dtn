@@ -284,6 +284,24 @@ class DTN(object):
             self.fx = self.content_extractor(self.images)
             self.sampled_images = self.generator(self.fx)
 
+        elif self.mode == 'eval_d':
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+
+            # source domain (svhn to mnist)
+            self.fx = self.content_extractor(self.src_images)
+            self.fake_images = self.generator(self.fx)
+            self.logits_s = self.discriminator(self.fake_images)
+            self.fgfx = self.content_extractor(self.fake_images, reuse=True)
+            
+            # target domain (mnist)
+            self.fx = self.content_extractor(self.trg_images, reuse=True)
+            self.reconst_images = self.generator(self.fx, reuse=True)
+            self.logits_fake_t = self.discriminator(self.reconst_images, reuse=True)
+            self.logits_real_t = self.discriminator(self.trg_images, reuse=True)
+            
+            
+
         elif self.mode == 'train':
             self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
             self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
