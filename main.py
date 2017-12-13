@@ -11,8 +11,8 @@ FLAGS = flags.FLAGS
 
 def main(_):
     
-    model = DTN(mode=FLAGS.mode, learning_rate=0.0003)
-    solver = Solver(model, batch_size=100, pretrain_iter=20000, train_iter=2000, sample_iter=100, 
+    model = DTN(mode=FLAGS.mode, learning_rate=0.00003)
+    solver = Solver(model, batch_size=100, pretrain_iter=20000, train_iter=2000, sample_iter=100,
                     svhn_dir='svhn', mnist_dir='mnist', model_save_path=FLAGS.model_save_path, sample_save_path=FLAGS.sample_save_path,
                    pretrain_sample_save_path=FLAGS.pretrain_sample_save_path)
     

@@ -126,7 +126,8 @@ class DTN(object):
                         # print "---" + str(logits.shape)
                         # Now 32x32x3
                         net1 = logits
-                        net2 = self.content_extractor_classifier(net)
+                        net2 = tf.reshape(net, [-1, 1, 1, 128])
+                        net2 = self.content_extractor_classifier(net2)
                         return net1, net2
                     else:
                         net = tf.reshape(net, [-1,1,1,128])
@@ -408,7 +409,7 @@ class DTN(object):
             self.d_loss_real_trg = slim.losses.sigmoid_cross_entropy(self.logits_real, tf.ones_like(self.logits_real))
             self.d_loss_trg = self.d_loss_fake_trg + self.d_loss_real_trg
             self.g_loss_fake_trg = slim.losses.sigmoid_cross_entropy(self.logits_fake, tf.ones_like(self.logits_fake))
-            self.g_loss_const_trg = tf.reduce_mean(tf.square(self.trg_images - self.reconst_images)) * 15.0
+            self.g_loss_const_trg = tf.reduce_mean(tf.square(self.trg_images - self.reconst_images)) * 115.0
             self.g_loss_trg = self.g_loss_fake_trg + self.g_loss_const_trg
             
             # optimizer

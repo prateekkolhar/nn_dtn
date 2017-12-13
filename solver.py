@@ -166,7 +166,7 @@ class Solver(object):
             # initialize G and D
             tf.global_variables_initializer().run()
             # restore variables of F
-            print ('loading pretrained model F..')
+            print ('loading pretrained model F..' + self.pretrained_model)
             variables_to_restore = slim.get_model_variables(scope='content_extractor')
             restorer = tf.train.Saver(variables_to_restore)
             restorer.restore(sess, self.pretrained_model)
