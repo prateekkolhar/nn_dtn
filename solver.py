@@ -10,9 +10,9 @@ from random import randint
 
 class Solver(object):
 
-    def __init__(self, model, batch_size=100, pretrain_iter=20000, train_iter=2000, sample_iter=100,
+    def __init__(self, model, batch_size=100, pretrain_iter=10000, train_iter=2000, sample_iter=100,
                  svhn_dir='svhn', mnist_dir='mnist', log_dir='logs', sample_save_path='sample',
-                 model_save_path='model', pretrain_sample_save_path= 'pretrain_sample',pretrained_model='model/svhn_model-20000', test_model='model/dtn-1800'):
+                 model_save_path='model', pretrain_sample_save_path= 'pretrain_sample',pretrained_model='model/svhn_model-10000', test_model='model/dtn-200'):
 
         self.model = model
         self.batch_size = batch_size
@@ -171,7 +171,7 @@ class Solver(object):
             restorer = tf.train.Saver(variables_to_restore)
             restorer.restore(sess, self.pretrained_model)
             summary_writer = tf.summary.FileWriter(logdir=self.log_dir, graph=tf.get_default_graph())
-            saver = tf.train.Saver()
+            saver = tf.train.Saver(max_to_keep=0)
 
             print ('start training..!')
             f_interval = 15
@@ -221,8 +221,8 @@ class Solver(object):
                     print ('[Target] step: [%d/%d] d_loss: [%.6f] g_loss: [%.6f]' \
                                %(step+1, self.train_iter, dl, gl))
 
-                if (step+1) % 200 == 0:
-                    saver.save(sess, os.path.join(self.model_save_path, 'dtn'), global_step=step+1)
+                if (step+1) % 100 == 0:
+                    saver.save(sess, os.path.join(self.model_save_path, 'dtn'), global_step=step+1 )
                     print ('model/dtn-%d saved' %(step+1))
 
     def eval(self):

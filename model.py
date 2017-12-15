@@ -74,7 +74,8 @@ class DTN(object):
                     # print "***" + str(net.shape)
                     # net = slim.batch_norm(net, activation_fn=tf.nn.tanh, scope='bn4')
                     if self.mode == 'pretrain':
-                        net = slim.conv2d(images, 10, [1, 1], padding='VALID', scope='out')
+                        net = tf.reshape(images, [-1,1,1,128])
+                        net = slim.conv2d(net, 10, [1, 1], padding='VALID', scope='out', weights_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), biases_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
                         net = slim.flatten(net)
                     return net
 
@@ -91,11 +92,11 @@ class DTN(object):
                 with slim.arg_scope([slim.batch_norm], decay=0.95, center=True, scale=True, 
                                     activation_fn=tf.nn.relu, is_training=(self.mode=='train' or self.mode=='pretrain')):
                     
-                    net = slim.conv2d(images, 32, [3, 3], scope='conv1')   # (batch_size, 16, 16, 32)
+                    net = slim.conv2d(images, 32, [3, 3], scope='conv1', weights_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), biases_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))   # (batch_size, 16, 16, 32)
                     net = slim.batch_norm(net, scope='bn1')
-                    net = slim.conv2d(net, 16, [3, 3], scope='conv2')     # (batch_size, 8, 8, 16)
+                    net = slim.conv2d(net, 16, [3, 3], scope='conv2', weights_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1), biases_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))     # (batch_size, 8, 8, 16)
                     net = slim.batch_norm(net, scope='bn2')
-                    net = slim.conv2d(net, 8, [3, 3], scope='conv3')     # (batch_size, 4, 4, 8)
+                    net = slim.conv2d(net, 8, [3, 3], scope='conv3', weights_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1), biases_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))     # (batch_size, 4, 4, 8)
                     net = slim.batch_norm(net, activation_fn=tf.nn.tanh, scope='bn3')
                     # print "***" + str(net.shape)
                     # net = slim.conv2d(net, 128, [4, 4], padding='VALID', scope='conv4')   # (batch_size, 1, 1, 128)
@@ -106,23 +107,23 @@ class DTN(object):
                         upsample1 = tf.image.resize_images(net, size=(8,8), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
                         # print "---" + str(upsample1.shape)
                         # Now 8x8x32
-                        conv4 = tf.layers.conv2d(inputs=upsample1, filters=16, kernel_size=(3,3), padding='same', activation=tf.nn.relu)
+                        conv4 = tf.layers.conv2d(inputs=upsample1, filters=16, kernel_size=(3,3), padding='same', activation=tf.nn.relu, kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
                         # print "---" + str(conv4.shape)
                         # Now 8x8x16
                         upsample2 = tf.image.resize_images(conv4, size=(16,16), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
                         # print "---" + str(upsample2.shape)
                         # Now 16x16x16
-                        conv5 = tf.layers.conv2d(inputs=upsample2, filters=32, kernel_size=(3,3), padding='same', activation=tf.nn.relu)
+                        conv5 = tf.layers.conv2d(inputs=upsample2, filters=32, kernel_size=(3,3), padding='same', activation=tf.nn.relu, kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
                         # print "---" + str(conv5.shape)
                         # Now 16x16x32
                         upsample3 = tf.image.resize_images(conv5, size=(32,32), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
                         # print "---" + str(upsample3.shape)
                         # Now 32x32x32
-                        conv6 = tf.layers.conv2d(inputs=upsample3, filters=32, kernel_size=(3,3), padding='same', activation=tf.nn.relu)
+                        conv6 = tf.layers.conv2d(inputs=upsample3, filters=32, kernel_size=(3,3), padding='same', activation=tf.nn.relu, kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
                         # print "---" + str(conv6.shape)
                         # Now 32x32x32
 
-                        logits = tf.layers.conv2d(inputs=conv6, filters=3, kernel_size=(3,3), padding='same', activation=None)
+                        logits = tf.layers.conv2d(inputs=conv6, filters=3, kernel_size=(3,3), padding='same', activation=None, kernel_regularizer = tf.contrib.layers.l2_regularizer(scale=0.1), bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
                         # print "---" + str(logits.shape)
                         # Now 32x32x3
                         net1 = logits
@@ -297,7 +298,7 @@ class DTN(object):
             # logits and accuracy
             self.logits1, self.logits2 = self.content_extractor(self.images)
             self.loss1 = tf.reduce_mean(tf.square(self.images - self.logits1))
-
+            
             self.pred = tf.argmax(self.logits2, 1)
             self.correct_pred = tf.equal(self.pred, self.labels)
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, tf.float32))
@@ -369,7 +370,7 @@ class DTN(object):
             # loss
             self.d_loss_src = slim.losses.sigmoid_cross_entropy(self.logits, tf.zeros_like(self.logits))
             self.g_loss_src = slim.losses.sigmoid_cross_entropy(self.logits, tf.ones_like(self.logits))
-            self.f_loss_src = tf.reduce_mean(tf.square(self.fx - self.fgfx)) * 15.0
+            self.f_loss_src = tf.reduce_mean(tf.square(self.fx - self.fgfx)) * 100.0
             
             # optimizer
             self.d_optimizer_src = tf.train.AdamOptimizer(self.learning_rate)
@@ -408,7 +409,7 @@ class DTN(object):
             self.d_loss_real_trg = slim.losses.sigmoid_cross_entropy(self.logits_real, tf.ones_like(self.logits_real))
             self.d_loss_trg = self.d_loss_fake_trg + self.d_loss_real_trg
             self.g_loss_fake_trg = slim.losses.sigmoid_cross_entropy(self.logits_fake, tf.ones_like(self.logits_fake))
-            self.g_loss_const_trg = tf.reduce_mean(tf.square(self.trg_images - self.reconst_images)) * 15.0
+            self.g_loss_const_trg = tf.reduce_mean(tf.square(self.trg_images - self.reconst_images)) * 100.0
             self.g_loss_trg = self.g_loss_fake_trg + self.g_loss_const_trg
             
             # optimizer

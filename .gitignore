@@ -109,4 +109,5 @@ mnist/
 model/
 sample/
 svhn/
-
+models_12Dec/
+pretrain_sample/
