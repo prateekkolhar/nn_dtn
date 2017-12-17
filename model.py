@@ -162,6 +162,7 @@ class DTN(object):
                 net = tf.layers.max_pooling2d(net, pool_size=(2,2), strides=(2,2), padding='same')
                 # print "**6" + str(net.shape)
                 # (batch_size, 1, 1, 8)
+                
 
                 if self.mode == 'pretrain':
                     ### Decoder
@@ -292,24 +293,52 @@ class DTN(object):
             self.summary_op = tf.summary.merge([loss_summary, accuracy_summary])
 
         if self.mode == 'pretrain':
-            self.images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
-            self.labels = tf.placeholder(tf.int64, [None], 'svhn_labels')
+            self.src_images = tf.placeholder(tf.float32, [None, 32, 32, 3], 'svhn_images')
+            self.src_labels = tf.placeholder(tf.int64, [None], 'svhn_labels')
+            
+            self.trg_images = tf.placeholder(tf.float32, [None, 32, 32, 1], 'mnist_images')
+            self.trg_labels = tf.placeholder(tf.int64, [None], 'mnist_labels')
+            
+            trg_images_3 = tf.image.grayscale_to_rgb(self.trg_images)
+            # convert to 32 32 3
+            
+            
             
             # logits and accuracy
-            self.logits1, self.logits2 = self.content_extractor(self.images)
-            self.loss1 = tf.reduce_mean(tf.square(self.images - self.logits1))
+            self.src_logits1, self.src_logits2 = self.content_extractor(self.src_images)
+            self.trg_logits1, self.trg_logits2 = self.content_extractor(trg_images_3, reuse=True)
+#             AE error
+            self.sq_error = tf.concat([tf.square(self.src_images - self.src_logits1), tf.square(trg_images_3 - self.trg_logits1)], 0) 
+            self.loss1 = tf.reduce_mean(self.sq_error)
             
-            self.pred = tf.argmax(self.logits2, 1)
-            self.correct_pred = tf.equal(self.pred, self.labels)
+             # KL divergence between distributions of source and target domains
+            self.mode="train"
+            self.src_f,_ = self.content_extractor(self.src_images, reuse=True)
+            self.trg_f,_ = self.content_extractor(trg_images_3, reuse=True )
+            
+            self.mode="pretrain"
+            
+            dist_s = tf.reduce_mean(self.src_f, axis=0)
+            dist_t = tf.reduce_mean(self.trg_f, axis=0)
+            self.KL = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=dist_s, labels=dist_t))
+            self.KL += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=dist_t, labels=dist_s))
+            
+
+#             Classification error only for src
+            self.src_pred = tf.argmax(self.src_logits2, 1)
+            self.correct_pred = tf.equal(self.src_pred, self.src_labels)
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, tf.float32))
 
-            # loss and train op
-            self.loss2 = slim.losses.sparse_softmax_cross_entropy(self.logits2, self.labels)
+            # loss and train op - classification 
+            self.loss2 = slim.losses.sparse_softmax_cross_entropy(self.src_logits2, self.src_labels)
 
             self.optimizer1 = tf.train.AdamOptimizer(self.learning_rate)
             self.optimizer2 = tf.train.AdamOptimizer(self.learning_rate)
+            self.optimizer3 = tf.train.AdamOptimizer(self.learning_rate)
             self.train_op1 = slim.learning.create_train_op(self.loss1, self.optimizer1)
             self.train_op2 = slim.learning.create_train_op(self.loss2, self.optimizer2)
+            self.train_op3 = slim.learning.create_train_op(self.KL, self.optimizer3)
+
             
             # summary op
             loss_summary = tf.summary.scalar('classification_loss', self.loss2)

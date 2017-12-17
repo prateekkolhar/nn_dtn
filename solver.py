@@ -109,6 +109,8 @@ class Solver(object):
         train_images, train_labels = self.load_svhn(self.svhn_dir, split='train')
         test_images, test_labels = self.load_svhn(self.svhn_dir, split='test')
 
+        mnist_images, mnist_labels = self.load_mnist(self.mnist_dir, split='train')
+        
         # build a graph
         model = self.model
         model.build_model()
@@ -120,21 +122,30 @@ class Solver(object):
 
             for step in range(self.pretrain_iter+1):
                 i = step % int(train_images.shape[0] / self.batch_size)
-                batch_images = train_images[i*self.batch_size:(i+1)*self.batch_size]
-                batch_labels = train_labels[i * self.batch_size:(i + 1) * self.batch_size]
-                feed_dict = {model.images: batch_images, model.labels: batch_labels}
+                batch_images_src = train_images[i*self.batch_size:(i+1)*self.batch_size]
+                batch_labels_src = train_labels[i * self.batch_size:(i + 1) * self.batch_size]
+                
+                
+                batch_images_trg = mnist_images[i*self.batch_size:(i+1)*self.batch_size]
+                batch_labels_trg = mnist_labels[i * self.batch_size:(i + 1) * self.batch_size]
+                
+                feed_dict = {model.src_images: batch_images_src, model.src_labels: batch_labels_src, model.trg_images: batch_images_trg, model.trg_labels: batch_labels_trg }
+                
                 sess.run(model.train_op1, feed_dict)
                 sess.run(model.train_op2, feed_dict)
+                sess.run(model.train_op3, feed_dict)
 
+                #KL, loss1,loss2, accuracy. 
+                
                 if (step+1) % 10 == 0:
-                    summary, l, acc = sess.run([model.summary_op, model.loss2, model.accuracy], feed_dict)
+                    summary, l2, acc, l1, kl = sess.run([model.summary_op, model.loss2, model.accuracy, model.loss1, model.KL], feed_dict)
                     rand_idxs = np.random.permutation(test_images.shape[0])[:self.batch_size]
                     test_acc, _ = sess.run(fetches=[model.accuracy, model.loss2],
-                                           feed_dict={model.images: test_images[rand_idxs],
-                                                      model.labels: test_labels[rand_idxs]})
+                                           feed_dict={model.src_images: test_images[rand_idxs],
+                                                      model.src_labels: test_labels[rand_idxs]})
                     summary_writer.add_summary(summary, step)
-                    print ('Step: [%d/%d] loss: [%.6f] train acc: [%.2f] test acc [%.2f]' \
-                               %(step+1, self.pretrain_iter, l, acc, test_acc))
+                    print ('Step: [%d/%d] loss: [%.6f] train acc: [%.2f] train l1: [%.2f] train kl: [%.2f] test acc [%.2f]' \
+                               %(step+1, self.pretrain_iter, l2, acc, l1, kl, test_acc))
 
                 if (step+1) % 1000 == 0:
                     saver.save(sess, os.path.join(self.model_save_path, 'svhn_model'), global_step=step+1)
